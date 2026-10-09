@@ -9,6 +9,10 @@ export function seedDatabase(force: boolean = false) {
     return { status: 'already_seeded', message: 'Database already has data.' };
   }
 
+  if (force) {
+    db.exec('PRAGMA foreign_keys = OFF;');
+  }
+
   db.exec('BEGIN TRANSACTION');
   try {
     if (force) {
@@ -41,6 +45,7 @@ export function seedDatabase(force: boolean = false) {
         DELETE FROM categories;
         DELETE FROM settings;
         DELETE FROM users;
+        DELETE FROM sqlite_sequence;
       `);
     }
 
@@ -394,10 +399,14 @@ export function seedDatabase(force: boolean = false) {
     insertLog.run(1, 'SEED_DATABASE', 'SYSTEM', 1, 'Initial ERP setup and sample Thai construction materials loaded successfully');
 
     db.exec('COMMIT');
-    return { status: 'success', message: 'Seed data generated successfully.' };
+    return { success: true, status: 'success', message: 'Seed data generated successfully.' };
   } catch (err: any) {
     db.exec('ROLLBACK');
     console.error('Seed error:', err);
     throw err;
+  } finally {
+    if (force) {
+      db.exec('PRAGMA foreign_keys = ON;');
+    }
   }
 }

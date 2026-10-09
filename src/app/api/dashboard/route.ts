@@ -78,13 +78,22 @@ export async function GET() {
     // 6. Recent sales orders
     const recentSales = queryAll(`
       SELECT 
-        so.id, so.doc_no, so.doc_type, so.total_amount, so.payment_status, so.payment_method,
-        so.created_at, COALESCE(c.name, 'ลูกค้าทั่วไป') as customer_name
+        so.*, COALESCE(c.name, 'ลูกค้าทั่วไป') as customer_name,
+        c.phone as customer_phone, c.address as customer_address
       FROM sales_orders so
       LEFT JOIN customers c ON so.customer_id = c.id
       ORDER BY so.id DESC
       LIMIT 7
     `);
+
+    for (const s of recentSales) {
+      s.items = queryAll(`
+        SELECT si.*, p.name as product_name, p.sku
+        FROM sales_items si
+        JOIN products p ON si.product_id = p.id
+        WHERE si.sale_id = ?
+      `, [s.id]);
+    }
 
     // 7. Top selling items (by revenue)
     const topProducts = queryAll(`

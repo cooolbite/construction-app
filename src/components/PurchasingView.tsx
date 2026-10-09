@@ -12,7 +12,8 @@ import {
   FileText,
   Calendar,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Printer
 } from 'lucide-react';
 
 interface PurchasingViewProps {
@@ -32,6 +33,7 @@ export function PurchasingView({
 }: PurchasingViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [receivingPo, setReceivingPo] = useState<any>(null);
+  const [viewingPo, setViewingPo] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New PO Form
@@ -249,20 +251,29 @@ export function PurchasingView({
                     </td>
 
                     <td className="py-3 px-4 text-right">
-                      {po.status !== 'received' ? (
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => handleOpenReceive(po)}
-                          className="px-2.5 py-1 rounded bg-[#ff385c] hover:bg-[#e00b41] text-[11px] font-medium text-white cursor-pointer shadow-xs flex items-center gap-1.5 ml-auto"
+                          onClick={() => setViewingPo(po)}
+                          className="p-1 rounded hover:bg-surface-strong text-muted-text hover:text-ink cursor-pointer"
+                          title="ดูและพิมพ์ใบสั่งซื้อ"
                         >
-                          <PackageCheck className="w-3.5 h-3.5" />
-                          <span>รับสินค้า (GRN)</span>
+                          <FileText className="w-4 h-4" />
                         </button>
-                      ) : (
-                        <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1 justify-end">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>รับสมบูรณ์</span>
-                        </span>
-                      )}
+                        {po.status !== 'received' ? (
+                          <button
+                            onClick={() => handleOpenReceive(po)}
+                            className="px-2.5 py-1 rounded bg-[#ff385c] hover:bg-[#e00b41] text-[11px] font-medium text-white cursor-pointer shadow-xs flex items-center gap-1.5"
+                          >
+                            <PackageCheck className="w-3.5 h-3.5" />
+                            <span>รับสินค้า (GRN)</span>
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>รับสมบูรณ์</span>
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -536,6 +547,160 @@ export function PurchasingView({
                 className="btn-rausch text-xs py-2 px-6 cursor-pointer"
               >
                 {isSubmitting ? 'กำลังบันทึก...' : 'ยืนยันรับเข้าคลัง'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* View / Print PO Modal */}
+      {viewingPo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-canvas border border-hairline rounded-2xl max-w-3xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4 animate-fadeIn">
+            
+            <div className="flex justify-between items-center pb-3 border-b border-hairline no-print">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-[#ff385c]" />
+                <h3 className="font-bold text-base text-ink">รายละเอียดใบสั่งซื้อสินค้า ({viewingPo.doc_no})</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>พิมพ์ PO</span>
+                </button>
+                <button
+                  onClick={() => setViewingPo(null)}
+                  className="text-muted-text hover:text-ink text-sm cursor-pointer p-1"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Document Content */}
+            <div className="space-y-4 text-xs bg-white p-5 rounded-xl border border-hairline">
+              
+              <div className="flex justify-between items-start pb-3 border-b border-hairline">
+                <div>
+                  <h2 className="text-base font-bold text-ink">สมบูรณ์ ค้าวัสดุก่อสร้าง</h2>
+                  <p className="text-muted-text text-[11px]">ใบสั่งซื้อสินค้า (Purchase Order)</p>
+                  <p className="text-muted-text text-[11px]">เลขประจำตัวผู้เสียภาษี: 0105562089123</p>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-sm text-ink">{viewingPo.doc_no}</div>
+                  <div className="text-muted-text text-[11px]">วันที่สั่ง: {viewingPo.doc_date}</div>
+                  <div className="text-muted-text text-[11px]">กำหนดรับสินค้า: {viewingPo.expected_date || '-'}</div>
+                </div>
+              </div>
+
+              {/* Supplier Info Box */}
+              <div className="p-3 bg-surface-soft rounded-xl border border-hairline flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] text-muted-text uppercase font-bold block">ผู้จำหน่าย / โรงงาน</span>
+                  <span className="font-bold text-ink text-sm">{viewingPo.supplier_name}</span>
+                  <span className="text-muted-text text-[11px] block">รหัส: {viewingPo.supplier_code}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-muted-text uppercase font-bold block">สถานะการรับของ</span>
+                  <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full inline-block mt-0.5 ${
+                    viewingPo.status === 'received' ? 'bg-emerald-100 text-emerald-800' :
+                    viewingPo.status === 'partial' ? 'bg-amber-100 text-amber-800' :
+                    viewingPo.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
+                    'bg-surface-strong text-muted-text'
+                  }`}>
+                    {viewingPo.status === 'received' && '✓ รับสินค้าครบแล้ว'}
+                    {viewingPo.status === 'partial' && 'รับบางส่วน'}
+                    {viewingPo.status === 'ordered' && 'สั่งแล้ว-รอส่ง'}
+                    {viewingPo.status === 'draft' && 'ร่าง'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="border border-hairline rounded-xl overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-surface-soft border-b border-hairline text-muted-text text-[11px]">
+                    <tr>
+                      <th className="py-2 px-3">#</th>
+                      <th className="py-2 px-3">รายการสินค้า</th>
+                      <th className="py-2 px-3 text-right">จำนวนสั่ง</th>
+                      <th className="py-2 px-3 text-right">รับแล้ว</th>
+                      <th className="py-2 px-3 text-right">ราคาซื้อ/หน่วย</th>
+                      <th className="py-2 px-3 text-right">รวมเงิน</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline">
+                    {(viewingPo.items || []).map((it: any, idx: number) => (
+                      <tr key={it.id || idx}>
+                        <td className="py-2 px-3 text-muted-text">{idx + 1}</td>
+                        <td className="py-2 px-3">
+                          <span className="font-semibold text-ink">{it.product_name}</span>
+                          <span className="text-[10px] text-muted-text block">{it.sku}</span>
+                        </td>
+                        <td className="py-2 px-3 text-right font-medium text-ink">{it.quantity} {it.unit_name}</td>
+                        <td className="py-2 px-3 text-right text-emerald-700 font-medium">{it.received_quantity || 0}</td>
+                        <td className="py-2 px-3 text-right">฿{Number(it.unit_cost).toLocaleString()}</td>
+                        <td className="py-2 px-3 text-right font-semibold text-ink">฿{(it.quantity * it.unit_cost).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Totals & Notes */}
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <span className="font-bold text-muted-text block text-[11px] mb-1">หมายเหตุ:</span>
+                  <p className="p-2.5 bg-surface-soft rounded-xl border border-hairline text-[11px] text-muted-text min-h-[50px]">
+                    {viewingPo.notes || 'ส่งสินค้าที่คลังหลัก ตรวจรับตามมาตรฐาน มอก.'}
+                  </p>
+                </div>
+                <div className="space-y-1 text-right text-xs">
+                  <div className="flex justify-between text-muted-text">
+                    <span>ยอดรวมก่อนภาษี:</span>
+                    <span>฿{Number(viewingPo.subtotal).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-text">
+                    <span>ภาษีมูลค่าเพิ่ม 7%:</span>
+                    <span>฿{Number(viewingPo.vat_amount).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-sm text-ink pt-1 border-t border-hairline">
+                    <span>ยอดสุทธิทั้งสิ้น:</span>
+                    <span className="text-[#ff385c]">฿{Number(viewingPo.total_amount).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-hairline no-print">
+              <div>
+                {viewingPo.status !== 'received' && (
+                  <button
+                    onClick={() => {
+                      const p = viewingPo;
+                      setViewingPo(null);
+                      handleOpenReceive(p);
+                    }}
+                    className="btn-rausch text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <PackageCheck className="w-3.5 h-3.5" />
+                    <span>ดำเนินการรับสินค้าเข้าคลัง (GRN)</span>
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setViewingPo(null)}
+                className="btn-secondary text-xs py-2 px-5 cursor-pointer"
+              >
+                ปิดหน้าต่าง
               </button>
             </div>
 

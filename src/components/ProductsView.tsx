@@ -34,6 +34,7 @@ export function ProductsView({
   const [selectedCat, setSelectedCat] = useState<string>('all');
   const [filterLowStock, setFilterLowStock] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New product form
@@ -84,6 +85,30 @@ export function ProductsView({
       } else {
         const data = await res.json();
         alert(data.error || 'เกิดข้อผิดพลาดในการบันทึกสินค้า');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingProduct)
+      });
+      if (res.ok) {
+        setEditingProduct(null);
+        onRefresh();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'เกิดข้อผิดพลาดในการแก้ไขสินค้า');
       }
     } catch (err: any) {
       alert(err.message);
@@ -269,13 +294,22 @@ export function ProductsView({
 
                   {/* Actions */}
                   <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => handleDeactivate(p.id)}
-                      className="p-1.5 rounded hover:bg-surface-strong text-muted-text hover:text-red-600 cursor-pointer"
-                      title="ระงับสินค้า"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => setEditingProduct({ ...p })}
+                        className="p-1.5 rounded hover:bg-surface-strong text-muted-text hover:text-ink cursor-pointer"
+                        title="แก้ไขสินค้าและราคา"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeactivate(p.id)}
+                        className="p-1.5 rounded hover:bg-surface-strong text-muted-text hover:text-red-600 cursor-pointer"
+                        title="ระงับสินค้า"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -458,6 +492,161 @@ export function ProductsView({
                   className="btn-rausch text-xs py-2 px-6 cursor-pointer"
                 >
                   {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกสินค้า'}
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-canvas border border-hairline rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-5 animate-fadeIn">
+            
+            <div className="flex justify-between items-center pb-3 border-b border-hairline">
+              <div>
+                <h3 className="font-bold text-base text-ink">แก้ไขข้อมูลสินค้า ({editingProduct.sku})</h3>
+                <p className="text-xs text-muted-text">{editingProduct.name}</p>
+              </div>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="text-muted-text hover:text-ink text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProduct} className="space-y-4 text-xs">
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-semibold text-muted-text block mb-1">รหัสสินค้า (SKU) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingProduct.sku || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
+                    className="w-full bg-surface-soft border border-hairline rounded-xl p-2 text-ink focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-muted-text block mb-1">หมวดหมู่สินค้า *</label>
+                  <select
+                    value={editingProduct.category_id || 1}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, category_id: Number(e.target.value) })}
+                    className="w-full bg-surface-soft border border-hairline rounded-xl p-2 text-ink focus:outline-none"
+                  >
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-muted-text block mb-1">ชื่อสินค้า (Product Name) *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingProduct.name || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  className="w-full bg-surface-soft border border-hairline rounded-xl p-2 text-ink focus:outline-none"
+                />
+              </div>
+
+              {/* Pricing Section (4 tiers) */}
+              <div className="p-3 bg-surface-soft rounded-xl border border-hairline space-y-3">
+                <span className="font-bold text-ink block text-[11px]">ปรับแก้ราคาขาย 4 ระดับ (Pricing Structure)</span>
+                <div className="grid grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-[10px] text-muted-text block mb-0.5">ราคาทุน</label>
+                    <input
+                      type="number"
+                      value={editingProduct.cost_price || 0}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, cost_price: Number(e.target.value) })}
+                      className="w-full bg-white border border-hairline rounded-lg p-1.5 text-xs text-ink"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-text block mb-0.5">ราคาขายปลีก</label>
+                    <input
+                      type="number"
+                      value={editingProduct.retail_price || 0}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, retail_price: Number(e.target.value) })}
+                      className="w-full bg-white border border-hairline rounded-lg p-1.5 text-xs text-ink font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-text block mb-0.5">ราคาผู้รับเหมา</label>
+                    <input
+                      type="number"
+                      value={editingProduct.contractor_price || 0}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, contractor_price: Number(e.target.value) })}
+                      className="w-full bg-white border border-hairline rounded-lg p-1.5 text-xs text-ink text-blue-700 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-text block mb-0.5">ราคาโครงการ</label>
+                    <input
+                      type="number"
+                      value={editingProduct.project_price || 0}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, project_price: Number(e.target.value) })}
+                      className="w-full bg-white border border-hairline rounded-lg p-1.5 text-xs text-ink text-emerald-700 font-semibold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock Thresholds */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-semibold text-muted-text block mb-1">จุดเตือนสั่งซื้อ (Reorder Point)</label>
+                  <input
+                    type="number"
+                    value={editingProduct.reorder_point || 0}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, reorder_point: Number(e.target.value) })}
+                    className="w-full bg-surface-soft border border-hairline rounded-xl p-2 text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-muted-text block mb-1">สต็อกขั้นต่ำ (Min)</label>
+                  <input
+                    type="number"
+                    value={editingProduct.min_stock || 0}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, min_stock: Number(e.target.value) })}
+                    className="w-full bg-surface-soft border border-hairline rounded-xl p-2 text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-muted-text block mb-1">สต็อกสูงสุด (Max)</label>
+                  <input
+                    type="number"
+                    value={editingProduct.max_stock || 0}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, max_stock: Number(e.target.value) })}
+                    className="w-full bg-surface-soft border border-hairline rounded-xl p-2 text-ink"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-hairline">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="btn-secondary text-xs py-2 px-4 cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="btn-rausch text-xs py-2 px-6 cursor-pointer"
+                >
+                  {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
                 </button>
               </div>
 
